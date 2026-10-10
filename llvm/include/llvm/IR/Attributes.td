@@ -378,6 +378,15 @@ def SwiftSelf : EnumAttr<"swiftself", IntersectPreserve, [ParamAttr]>;
 /// Argument is swift async context.
 def SwiftAsync : EnumAttr<"swiftasync", IntersectPreserve, [ParamAttr]>;
 
+/// Argument is the RIDL context register (KLF-RIDL section 22.2). RIDL's own
+/// register, distinct from `swiftself`.
+def RidlContext : EnumAttr<"ridlcontext", IntersectPreserve, [ParamAttr]>;
+
+/// Argument is the RIDL error register (KLF-RIDL section 22.2), carrying a
+/// pointer to a RIDL box under section 22.5. Distinct from `swifterror`, and
+/// not part of the exception-handling model.
+def RidlError : EnumAttr<"ridlerror", IntersectPreserve, [ParamAttr]>;
+
 /// Function must be in a unwind table.
 def UWTable : IntAttr<"uwtable", IntersectPreserve, [FnAttr]>;
 

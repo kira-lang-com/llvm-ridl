@@ -8984,6 +8984,14 @@ CCAssignFn *AArch64TargetLowering::CCAssignFnForCall(CallingConv::ID CC,
       return CC_AArch64_Win64_VarArg;
     }
     return CC_AArch64_Win64PCS;
+  case CallingConv::Ridl:
+    // The base is the target's own standard (22.1): the Apple variant on
+    // Darwin, AAPCS64 elsewhere. RIDL's context register is x20 on every aarch64
+    // OS (22.2), so only the base moves. `ridlcc` is not a varargs convention:
+    // a RIDL call has a fixed signature, so there is no varargs table to pick.
+    if (Subtarget->isTargetDarwin())
+      return CC_AArch64_Ridl_Darwin;
+    return CC_AArch64_Ridl;
   case CallingConv::CFGuard_Check:
     if (Subtarget->isWindowsArm64EC())
       return CC_AArch64_Arm64EC_CFGuard_Check;
@@ -9006,6 +9014,11 @@ AArch64TargetLowering::CCAssignFnForReturn(CallingConv::ID CC) const {
   switch (CC) {
   default:
     return RetCC_AArch64_AAPCS;
+  case CallingConv::Ridl:
+    // The error register is x21 on every aarch64 OS (22.2), and the result
+    // registers are the same four AAPCS64 uses, so one return table serves every
+    // aarch64 target.
+    return RetCC_AArch64_Ridl;
   case CallingConv::ARM64EC_Thunk_X64:
     return RetCC_AArch64_Arm64EC_Thunk;
   case CallingConv::CFGuard_Check:

@@ -2334,6 +2334,10 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
     return Attribute::NoOutline;
   case bitc::ATTR_KIND_NOIPA:
     return Attribute::NoIPA;
+  case bitc::ATTR_KIND_RIDLCONTEXT:
+    return Attribute::RidlContext;
+  case bitc::ATTR_KIND_RIDLERROR:
+    return Attribute::RidlError;
   }
 }
 

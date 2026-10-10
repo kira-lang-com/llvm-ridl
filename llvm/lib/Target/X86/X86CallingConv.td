@@ -408,6 +408,33 @@ def RetCC_X86_64_HiPE : CallingConv<[
   CCIfType<[i64], CCAssignToReg<[R15, RBP, RAX, RDX]>>
 ]>;
 
+// The RIDL return convention on x86-64 (KLF-RIDL section 22). The error
+// register is r12 and the indirect result is rax (22.2); the direct result
+// registers are the four the base standard uses.
+//
+// RIDL's error register is its own: it carries a pointer to a RIDL box under
+// 22.5 and takes no part in the exception-handling model, which is what
+// distinguishes it from `swifterror` even though both happen to land in r12 on
+// this target.
+def RetCC_X86_64_Ridl : CallingConv<[
+  CCIfRidlError<CCIfType<[i64], CCAssignToReg<[R12]>>>,
+
+  // A RIDL result is at most four leaves (22.4), so the four direct result
+  // registers of the base standard are the whole of it. Integers return in
+  // rax, rdx, rcx, r8 and floats in xmm0 to xmm3.
+  CCIfType<[v1i1], CCPromoteToType<i8>>,
+  CCIfType<[i1], CCPromoteToType<i8>>,
+  CCIfType<[i8], CCAssignToReg<[AL, DL, CL, R8B]>>,
+  CCIfType<[i16], CCAssignToReg<[AX, DX, CX, R8W]>>,
+  CCIfType<[i32], CCAssignToReg<[EAX, EDX, ECX, R8D]>>,
+  CCIfType<[i64], CCAssignToReg<[RAX, RDX, RCX, R8]>>,
+  CCIfType<[f32], CCAssignToReg<[XMM0, XMM1, XMM2, XMM3]>>,
+  CCIfType<[f64], CCAssignToReg<[XMM0, XMM1, XMM2, XMM3]>>,
+  CCIfType<[f128], CCAssignToReg<[XMM0, XMM1, XMM2, XMM3]>>,
+
+  CCDelegateTo<RetCC_X86Common>
+]>;
+
 def RetCC_X86_64_Swift : CallingConv<[
 
   CCIfSwiftError<CCIfType<[i64], CCAssignToReg<[R12]>>>,
@@ -483,6 +510,7 @@ def RetCC_X86_64 : CallingConv<[
   // Handle explicit CC selection
   CCIfCC<"CallingConv::Win64", CCDelegateTo<RetCC_X86_Win64_C>>,
   CCIfCC<"CallingConv::X86_64_SysV", CCDelegateTo<RetCC_X86_64_C>>,
+  CCIfCC<"CallingConv::Ridl", CCDelegateTo<RetCC_X86_64_Ridl>>,
 
   // Handle Vectorcall CC
   CCIfCC<"CallingConv::X86_VectorCall", CCDelegateTo<RetCC_X86_64_Vectorcall>>,
@@ -1083,11 +1111,54 @@ def CC_X86_32 : CallingConv<[
   CCDelegateTo<CC_X86_32_C>
 ]>;
 
+// The RIDL argument convention on x86-64, over the SysV base (KLF-RIDL 22.1,
+// 22.2). The context register is r13 and the error register is r12; both are
+// RIDL's own, not `swiftself` and `swifterror`.
+def CC_X86_64_Ridl_SysV : CallingConv<[
+  CCIfByVal<CCPassByVal<8, 8>>,
+  CCIfType<[i1, i8, i16, v1i1], CCPromoteToType<i32>>,
+
+  // The context register, in r13 (22.2). It is callee-saved.
+  CCIfRidlContext<CCIfType<[i64], CCAssignToReg<[R13]>>>,
+
+  // The error register, in r12 (22.2). It is not preserved.
+  CCIfRidlError<CCIfType<[i64], CCAssignToReg<[R12]>>>,
+
+  // The indirect result goes in rax (22.2).
+  CCIfRidlContext<CCIfSRet<CCIfType<[i64], CCAssignToReg<[RAX]>>>>,
+
+  CCDelegateTo<CC_X86_64_C>
+]>;
+
+// The RIDL argument convention on x86-64, over the Win64 base. Only the base
+// changes: section 22.2 gives the context register in r13 and the error register
+// in r12 on both x86-64 rows, so they do not move on Windows.
+def CC_X86_64_Ridl_Win64 : CallingConv<[
+  CCIfByVal<CCPassByVal<8, 8>>,
+  CCIfType<[i1, i8, i16, v1i1], CCPromoteToType<i32>>,
+
+  CCIfRidlContext<CCIfType<[i64], CCAssignToReg<[R13]>>>,
+  CCIfRidlError<CCIfType<[i64], CCAssignToReg<[R12]>>>,
+  CCIfRidlContext<CCIfSRet<CCIfType<[i64], CCAssignToReg<[RAX]>>>>,
+
+  CCDelegateTo<CC_X86_Win64_C>
+]>;
+
 // This is the root argument convention for the X86-64 backend.
 def CC_X86_64 : CallingConv<[
   CCIfCC<"CallingConv::GHC", CCDelegateTo<CC_X86_64_GHC>>,
   CCIfCC<"CallingConv::HiPE", CCDelegateTo<CC_X86_64_HiPE>>,
   CCIfCC<"CallingConv::AnyReg", CCDelegateTo<CC_X86_64_AnyReg>>,
+
+  // The RIDL convention, whose base is the target's own standard (22.1).
+  // The RIDL convention, whose base is the target's own standard (22.1). Two
+// arms rather than an if/else, as the rest of this file does: `isTargetWin64()`
+// is a Subtarget method and is only in scope inside `CCIfSubtarget`, and the
+// second arm is the case that does not match it.
+CCIfCC<"CallingConv::Ridl",
+  CCIfSubtarget<"isTargetWin64()", CCDelegateTo<CC_X86_64_Ridl_Win64>>>,
+CCIfCC<"CallingConv::Ridl", CCDelegateTo<CC_X86_64_Ridl_SysV>>,
+
   CCIfCC<"CallingConv::Win64", CCDelegateTo<CC_X86_Win64_C>>,
   CCIfCC<"CallingConv::X86_64_SysV", CCDelegateTo<CC_X86_64_C>>,
   CCIfCC<"CallingConv::X86_VectorCall", CCDelegateTo<CC_X86_Win64_VectorCall>>,

@@ -68,6 +68,19 @@ bool CC_AArch64_Preserve_None(unsigned ValNo, MVT ValVT, MVT LocVT,
 bool RetCC_AArch64_AAPCS(unsigned ValNo, MVT ValVT, MVT LocVT,
                          CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
                          Type *OrigTy, CCState &State);
+// The RIDL calling convention (KLF-RIDL section 22): AAPCS64 base with the
+// context register in x20, and the error register in x21 on return.
+bool CC_AArch64_Ridl(unsigned ValNo, MVT ValVT, MVT LocVT,
+                     CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
+                     Type *OrigTy, CCState &State);
+// The Darwin base for `ridlcc`; the context register is x20 there as well.
+bool CC_AArch64_Ridl_Darwin(unsigned ValNo, MVT ValVT, MVT LocVT,
+                            CCValAssign::LocInfo LocInfo,
+                            ISD::ArgFlagsTy ArgFlags, Type *OrigTy,
+                            CCState &State);
+bool RetCC_AArch64_Ridl(unsigned ValNo, MVT ValVT, MVT LocVT,
+                        CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
+                        Type *OrigTy, CCState &State);
 bool RetCC_AArch64_Arm64EC_Thunk(unsigned ValNo, MVT ValVT, MVT LocVT,
                                  CCValAssign::LocInfo LocInfo,
                                  ISD::ArgFlagsTy ArgFlags, Type *OrigTy,

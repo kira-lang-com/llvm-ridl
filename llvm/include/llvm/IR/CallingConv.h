@@ -89,6 +89,24 @@ namespace CallingConv {
     /// Used for runtime calls that preserves none general registers.
     PreserveNone = 21,
 
+    /// The RIDL calling convention, `ridlcc` (KLF-RIDL specification,
+    /// section 22).
+    ///
+    /// On each target this is the platform's base procedure call standard
+    /// named by the target's `RidlBase`, with the RIDL additions: the context
+    /// register and the error register of section 22.2, and results of at
+    /// most four leaves in the direct result registers.
+    ///
+    /// The convention is RIDL's own. It is not the Swift convention and does
+    /// not inherit Swift's registers, its error protocol, or its coupling to
+    /// the exception-handling model: the error register carries a pointer to
+    /// a RIDL box under the protocol of section 22.5, not a Swift error
+    /// value.
+    ///
+    /// Frontends perform all classification of section 22.3 themselves and
+    /// hand the backend only scalar leaves and pointers.
+    Ridl = 22,
+
     /// This is the start of the target-specific calling conventions, e.g.
     /// fastcall and thiscall on X86.
     FirstTargetCC = 64,

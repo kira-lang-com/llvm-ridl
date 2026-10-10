@@ -77,6 +77,10 @@ static void addFlagsFromAttrSet(ISD::ArgFlagsTy &Flags, AttributeSet Attrs) {
     Flags.setSwiftAsync();
   if (Attrs.hasAttribute(Attribute::SwiftError))
     Flags.setSwiftError();
+  if (Attrs.hasAttribute(Attribute::RidlContext))
+    Flags.setRidlContext();
+  if (Attrs.hasAttribute(Attribute::RidlError))
+    Flags.setRidlError();
 }
 
 ISD::ArgFlagsTy CallLowering::getAttributesForArgIdx(const CallBase &Call,

@@ -1159,6 +1159,7 @@ bool llvm::CallingConv::supportsNonVoidReturnType(CallingConv::ID CC) {
   case CallingConv::PreserveMost:
   case CallingConv::PreserveAll:
   case CallingConv::Swift:
+  case CallingConv::Ridl:
   case CallingConv::CXX_FAST_TLS:
   case CallingConv::Tail:
   case CallingConv::CFGuard_Check:

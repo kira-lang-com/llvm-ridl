@@ -42,6 +42,8 @@ namespace ISD {
     unsigned IsSwiftSelf : 1;  ///< Swift self parameter
     unsigned IsSwiftAsync : 1;  ///< Swift async context parameter
     unsigned IsSwiftError : 1; ///< Swift error parameter
+    unsigned IsRidlContext : 1; ///< `ridlcc` context register (section 22.2)
+    unsigned IsRidlError : 1;   ///< `ridlcc` error register (section 22.2)
     unsigned IsCFGuardTarget : 1; ///< Control Flow Guard target
     unsigned IsHva : 1;        ///< HVA field for
     unsigned IsHvaStart : 1;   ///< HVA structure start
@@ -66,8 +68,9 @@ namespace ISD {
         : IsZExt(0), IsSExt(0), IsNoExt(0), IsInReg(0), IsSRet(0), IsByVal(0),
           IsByRef(0), IsNest(0), IsReturned(0), IsSplit(0), IsInAlloca(0),
           IsPreallocated(0), IsSplitEnd(0), IsSwiftSelf(0), IsSwiftAsync(0),
-          IsSwiftError(0), IsCFGuardTarget(0), IsHva(0), IsHvaStart(0),
-          IsSecArgPass(0), MemAlign(0), OrigAlign(0),
+          IsSwiftError(0), IsRidlContext(0), IsRidlError(0),
+          IsCFGuardTarget(0), IsHva(0),
+          IsHvaStart(0), IsSecArgPass(0), MemAlign(0), OrigAlign(0),
           IsInConsecutiveRegsLast(0), IsInConsecutiveRegs(0),
           IsCopyElisionCandidate(0), IsPointer(0), IsVarArg(0) {
       static_assert(sizeof(*this) == 4 * sizeof(unsigned), "flags are too big");
@@ -108,6 +111,17 @@ namespace ISD {
 
     bool isSwiftError() const { return IsSwiftError; }
     void setSwiftError() { IsSwiftError = 1; }
+
+    /// The `ridlcc` context register (section 22.2). RIDL's own register,
+    /// unrelated to `swiftself`.
+    bool isRidlContext() const { return IsRidlContext; }
+    void setRidlContext() { IsRidlContext = 1; }
+
+    /// The `ridlcc` error register (section 22.2). RIDL's own register and
+    /// protocol (section 22.5); it is not `swifterror` and takes no part in
+    /// the exception-handling model.
+    bool isRidlError() const { return IsRidlError; }
+    void setRidlError() { IsRidlError = 1; }
 
     bool isCFGuardTarget() const { return IsCFGuardTarget; }
     void setCFGuardTarget() { IsCFGuardTarget = 1; }

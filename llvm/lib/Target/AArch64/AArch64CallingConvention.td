@@ -125,6 +125,61 @@ defvar AArch64_Common = [
 let Entry = 1 in
 def CC_AArch64_AAPCS : CallingConv<AArch64_Common>;
 
+// The RIDL calling convention on aarch64 (KLF-RIDL section 22). The base is
+// AAPCS64 (22.1), with the context register in x20 and the error register in
+// x21 (22.2). The context register is callee-saved (22.2), which X20 is under
+// AAPCS64. Frontends classify every RIDL value into scalar leaves before this
+// table sees it (22.3), so the aggregate rules of AAPCS64 never apply to a
+// RIDL aggregate: only leaves and pointers reach here.
+let Entry = 1 in
+def CC_AArch64_Ridl : CallingConv<!listconcat(
+  [
+    // The context register, ahead of every other argument (22.2). It is not
+    // `swiftself`; RIDL owns the register and its meaning.
+    CCIfRidlContext<CCIfType<[iPTR], CCBitConvertToType<i64>>>,
+    CCIfRidlContext<CCIfType<[i64], CCAssignToReg<[X20]>>>,
+
+    // The error register is x21 (22.2); it is not `swifterror` and takes no
+    // part in the exception-handling model.
+    CCIfRidlError<CCIfType<[i64], CCAssignToReg<[X21]>>>,
+    CCIfRidlError<CCIfType<[iPTR], CCAssignToReg<[X21]>>>,
+
+    // The indirect result is in x8 (22.2).
+    CCIfRidlContext<CCIfSRet<CCIfType<[i64], CCAssignToReg<[X8]>>>>
+  ],
+  AArch64_Common)
+>;
+
+let Entry = 1 in
+def RetCC_AArch64_Ridl : CallingConv<[
+  CCIfType<[iPTR], CCBitConvertToType<i64>>,
+  CCIfType<[v2f32], CCBitConvertToType<v2i32>>,
+  CCIfType<[v2f64, v4f32], CCBitConvertToType<v2i32>>,
+
+  CCIfConsecutiveRegs<CCCustom<"CC_AArch64_Custom_Block">>,
+
+  // The error register, in x21 (22.2). RIDL's own register carrying a pointer
+  // to a RIDL box under 22.5; it is not `swifterror` and takes no part in the
+  // exception-handling model.
+  CCIfRidlError<CCIfType<[i64], CCAssignToReg<[X21]>>>,
+  CCIfRidlError<CCIfType<[iPTR], CCAssignToReg<[X21]>>>,
+
+  // A RIDL result is at most four leaves (22.4); the same four direct result
+  // registers AAPCS64 uses.
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
+  CCIfType<[i32], CCAssignToReg<[W0, W1, W2, W3]>>,
+  CCIfType<[i64], CCAssignToReg<[X0, X1, X2, X3]>>,
+  CCIfType<[f32], CCAssignToReg<[S0, S1, S2, S3]>>,
+  CCIfType<[f64], CCAssignToReg<[D0, D1, D2, D3]>>,
+  CCIfType<[v1f64, v2f32, v4f16, v2i32, v2i64, v4i32, v8i8, v8i16, v4i16,
+            v4bf16, v8bf16],
+           CCAssignToReg<[D0, D1, D2, D3]>>,
+
+  CCIfType<[f128, v2i64, v4i32, v8i16, v16i8, v4f32, v2f64, v8f16, v8bf16],
+           CCPassIndirect<i64>>,
+  CCIfType<[i32, i64], CCAssignToStack<8, 8>>,
+]>;
+
 let Entry = 1 in
 def RetCC_AArch64_AAPCS : CallingConv<[
   CCIfType<[iPTR], CCBitConvertToType<i64>>,
@@ -440,6 +495,27 @@ def CC_AArch64_DarwinPCS : CallingConv<[
            CCAssignToStack<8, 8>>,
   CCIfType<[v2i64, v4i32, v8i16, v16i8, v4f32, v2f64, v8f16, v8bf16],
            CCAssignToStack<16, 16>>
+]>;
+
+// The Darwin base for `ridlcc`. Section 22.2 gives the context register in x20
+// on "aarch64 (all OS)", so RIDL's context register does not move on Darwin; only
+// the base standard changes, and that is the whole of the difference. The Darwin
+// argument table handles its own SRet and ByVal placement, so this delegates to
+// it rather than restating AAPCS64.
+let Entry = 1 in
+def CC_AArch64_Ridl_Darwin : CallingConv<[
+  // Both RIDL registers are fixed per architecture, not per OS (22.2), so
+  // Darwin gets the same x20 and x21 as every other aarch64 target.
+  CCIfRidlContext<CCIfType<[iPTR], CCBitConvertToType<i64>>>,
+  CCIfRidlContext<CCIfType<[i64], CCAssignToReg<[X20]>>>,
+
+  CCIfRidlError<CCIfType<[i64], CCAssignToReg<[X21]>>>,
+  CCIfRidlError<CCIfType<[iPTR], CCAssignToReg<[X21]>>>,
+
+  // The indirect result is in x8 on both bases (22.2).
+  CCIfRidlContext<CCIfSRet<CCIfType<[i64], CCAssignToReg<[X8]>>>>,
+
+  CCDelegateTo<CC_AArch64_DarwinPCS>
 ]>;
 
 let Entry = 1 in

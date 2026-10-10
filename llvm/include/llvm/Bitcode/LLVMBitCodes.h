@@ -826,6 +826,10 @@ enum AttributeKindCodes {
   ATTR_KIND_NOOUTLINE = 107,
   ATTR_KIND_FLATTEN = 108,
   ATTR_KIND_NOIPA = 109,
+  // The RIDL context and error registers (KLF-RIDL 22.2). RIDL's own
+  // parameters, distinct from `swiftself` and `swifterror`.
+  ATTR_KIND_RIDLCONTEXT = 110,
+  ATTR_KIND_RIDLERROR = 111,
 };
 
 enum ComdatSelectionKindCodes {

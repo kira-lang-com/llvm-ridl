@@ -2263,6 +2263,8 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
   bool SawSwiftSelf = false;
   bool SawSwiftAsync = false;
   bool SawSwiftError = false;
+  bool SawRidlContext = false;
+  bool SawRidlError = false;
 
   // Verify return value attributes.
   AttributeSet RetAttrs = Attrs.getRetAttrs();
@@ -2337,6 +2339,31 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
     if (ArgAttrs.hasAttribute(Attribute::SwiftError)) {
       Check(!SawSwiftError, "Cannot have multiple 'swifterror' parameters!", V);
       SawSwiftError = true;
+    }
+
+    // The RIDL context and error registers (KLF-RIDL 22.2) are single named
+    // registers, so a function may carry at most one of each. They belong to
+    // `ridlcc` alone: on any other convention they are not registers at all,
+    // and marking them there would silently do nothing. `V` is a Function or a
+    // call site, and both carry the calling convention being checked.
+    CallingConv::ID RidlCC = CallingConv::C;
+    if (const auto *CB = dyn_cast<CallBase>(V))
+      RidlCC = CB->getCallingConv();
+    else if (const auto *F = dyn_cast<Function>(V))
+      RidlCC = F->getCallingConv();
+
+    if (ArgAttrs.hasAttribute(Attribute::RidlContext)) {
+      Check(!SawRidlContext, "Cannot have multiple 'ridlcontext' parameters!", V);
+      Check(RidlCC == CallingConv::Ridl,
+            "'ridlcontext' is only valid on a 'ridlcc' function!", V);
+      SawRidlContext = true;
+    }
+
+    if (ArgAttrs.hasAttribute(Attribute::RidlError)) {
+      Check(!SawRidlError, "Cannot have multiple 'ridlerror' parameters!", V);
+      Check(RidlCC == CallingConv::Ridl,
+            "'ridlerror' is only valid on a 'ridlcc' function!", V);
+      SawRidlError = true;
     }
 
     if (ArgAttrs.hasAttribute(Attribute::InAlloca)) {

@@ -66,6 +66,17 @@ class CCIfSwiftError<CCAction A> : CCIf<"ArgFlags.isSwiftError()", A> {
 class CCIfCFGuardTarget<CCAction A> : CCIf<"ArgFlags.isCFGuardTarget()", A> {
 }
 
+/// CCIfRidlContext - If the current argument is the RIDL context register
+/// (KLF-RIDL 22.2), apply Action A. RIDL's own register, not `swiftself`.
+class CCIfRidlContext<CCAction A> : CCIf<"ArgFlags.isRidlContext()", A> {
+}
+
+/// CCIfRidlError - If the current argument is the RIDL error register
+/// (KLF-RIDL 22.2, 22.5), apply Action A. Not `swifterror`, and not part of
+/// the exception-handling model.
+class CCIfRidlError<CCAction A> : CCIf<"ArgFlags.isRidlError()", A> {
+}
+
 /// CCIfConsecutiveRegs - If the current argument has InConsecutiveRegs
 /// parameter attribute, apply Action A.
 class CCIfConsecutiveRegs<CCAction A> : CCIf<"ArgFlags.isInConsecutiveRegs()", A> {
