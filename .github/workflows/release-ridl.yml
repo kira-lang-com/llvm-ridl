@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      from_run:
+        description: "Publish the bundles this earlier run built, building nothing"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -30,6 +35,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.host }}
+    if: ${{ !inputs.from_run }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
     strategy:
@@ -102,6 +108,8 @@ jobs:
           pattern: llvm-ridl-*
           path: dist
           merge-multiple: true
+          run-id: ${{ inputs.from_run || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Publish the release
         env:
