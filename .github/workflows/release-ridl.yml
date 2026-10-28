@@ -90,7 +90,9 @@ jobs:
   publish:
     name: Publish
     needs: build
-    if: github.event_name == 'push' || inputs.publish
+    # Whatever hosts built are published even when one did not, as when no
+    # runner of its kind picks the job up; that host's bundle is added later.
+    if: ${{ !cancelled() && (github.event_name == 'push' || inputs.publish) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
