@@ -1,0 +1,115 @@
+name: Release RIDL LLVM
+
+# The LLVM a KLF distribution carries, built from this fork for every host
+# KLF runs on and published as `llvm-ridl-<version>-<host>` beside a
+# `.sha256`. A tag `v<version>` (as `v23.1.0-ridl.1`) publishes; a manual run
+# builds, and publishes when asked.
+
+on:
+  push:
+    tags:
+      - "v*-ridl.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, as `23.1.0-ridl.1`"
+        required: true
+        type: string
+      publish:
+        description: "Publish the release after the build succeeds"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  VERSION: ${{ github.event_name == 'push' && github.ref_name || format('v{0}', inputs.version) }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.host }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { host: aarch64-macos, runner: macos-15, archive: tar.xz }
+          - { host: x86_64-linux-gnu, runner: ubuntu-24.04, archive: tar.xz }
+          - { host: aarch64-linux-gnu, runner: ubuntu-24.04-arm, archive: tar.xz }
+          - { host: x86_64-windows-msvc, runner: windows-latest, archive: zip }
+          - { host: aarch64-windows-msvc, runner: windows-11-arm, archive: zip }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Name the asset
+        shell: bash
+        run: echo "ASSET=llvm-ridl-${VERSION#v}-${{ matrix.host }}.${{ matrix.archive }}" >> "$GITHUB_ENV"
+
+      - name: Install Ninja
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS) brew install ninja ;;
+            Linux) sudo apt-get update && sudo apt-get install -y ninja-build ;;
+            Windows) choco install ninja -y ;;
+          esac
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ startsWith(matrix.host, 'aarch64') && 'arm64' || 'x64' }}
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: bash ridl/build.sh "$RUNNER_TEMP/build" "$RUNNER_TEMP/install" "$RUNNER_TEMP/dist/$ASSET"
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./ridl/build.ps1 "$env:RUNNER_TEMP\build" "$env:RUNNER_TEMP\install" "$env:RUNNER_TEMP\dist\$env:ASSET"
+
+      - name: Checksum
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          if command -v sha256sum >/dev/null; then sha256sum "$ASSET"; else shasum -a 256 "$ASSET"; fi > "$ASSET.sha256"
+          cat "$ASSET.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: llvm-ridl-${{ matrix.host }}
+          path: ${{ runner.temp }}/dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: build
+    if: github.event_name == 'push' || inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: llvm-ridl-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          notes="LLVM with the RIDL calling convention, as a KLF distribution carries it."
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release edit "$VERSION" --notes "$notes"
+          else
+            gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes "$notes"
+          fi
+          gh release upload "$VERSION" dist/* --clobber
