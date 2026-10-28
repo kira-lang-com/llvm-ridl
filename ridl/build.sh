@@ -6,12 +6,13 @@
 # Only what KLF runs ships: clang, which links every program; lld, which it
 # links with on every host; llvm-ar, llvm-strip and llvm-objcopy; llvm-nm and
 # llvm-dwarfdump, which its tests read objects with; and clang's own headers.
-# The tools are linked against libLLVM, which ships beside them.
+# The tools are linked against libLLVM and libclang-cpp, which ship beside
+# them.
 set -euo pipefail
 BUILD=$1 INSTALL=$2 ARCHIVE=$3
 SOURCE=$(cd "$(dirname "$0")/.." && pwd)
 
-COMPONENTS="clang;clang-resource-headers;lld;llvm-ar;llvm-strip;llvm-objcopy;llvm-nm;llvm-dwarfdump;LLVM"
+COMPONENTS="clang;clang-cpp;clang-resource-headers;lld;llvm-ar;llvm-strip;llvm-objcopy;llvm-nm;llvm-dwarfdump;LLVM"
 RPATH='$ORIGIN/../lib'
 [ "$(uname -s)" = Darwin ] && RPATH='@loader_path/../lib'
 
