@@ -42,8 +42,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { host: aarch64-macos, runner: macos-15, archive: tar.xz }
-          - { host: x86_64-linux-gnu, runner: ubuntu-24.04, archive: tar.xz }
+          - { host: aarch64-macos, runner: macos-latest, archive: tar.xz }
+          - { host: x86_64-linux-gnu, runner: ubuntu-latest, archive: tar.xz }
           - { host: aarch64-linux-gnu, runner: ubuntu-24.04-arm, archive: tar.xz }
           - { host: x86_64-windows-msvc, runner: windows-latest, archive: zip }
           - { host: aarch64-windows-msvc, runner: windows-11-arm, archive: zip }
@@ -99,7 +99,7 @@ jobs:
     # Whatever hosts built are published even when one did not, as when no
     # runner of its kind picks the job up; that host's bundle is added later.
     if: ${{ !cancelled() && (github.event_name == 'push' || inputs.publish) }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
